@@ -14,6 +14,7 @@ model:
   rnnsz: 100
   dropout: 0.5
   finetune: true
+  max_pool: true
 word_embeddings: 
   label: glove-840B
 train: 

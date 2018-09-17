@@ -195,6 +195,7 @@ class LSTMModel(WordClassifierBase):
         super(LSTMModel, self).__init__()
 
     def _init_pool(self, dsz, **kwargs):
+        self.max = kwargs.get('max_pool', False)
         unif = kwargs.get('unif')
         hsz = kwargs.get('rnnsz', kwargs.get('hsz', 100))
         if type(hsz) is list:
@@ -210,6 +211,10 @@ class LSTMModel(WordClassifierBase):
         embeddings = embeddings.transpose(0, 1)
         packed = torch.nn.utils.rnn.pack_padded_sequence(embeddings, lengths.tolist())
         output, hidden = self.lstm(packed)
+        if self.max:
+            output, _ = torch.nn.utils.rnn.pad_packed_sequence(output)
+            output, _ = torch.max(output, dim=0)
+            return output
         hidden = hidden[0].view(hidden[0].shape[1:])
         return hidden
 
