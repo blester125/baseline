@@ -216,12 +216,19 @@ class RNNLanguageModel(LanguageModelBase):
         self.rnntype = rnntype
         self.vdrop = variational_dropout
 
-        rnnfwd = tf.contrib.rnn.MultiRNNCell([cell() for _ in range(self.layers)], state_is_tuple=True)
-        self.initial_state = rnnfwd.zero_state(self.batchsz, tf.float32)
-        rnnout, state = tf.nn.dynamic_rnn(rnnfwd, inputs, initial_state=self.initial_state, dtype=tf.float32)
-        h = tf.reshape(tf.concat(rnnout, 1), [-1, self.hsz])
+        if self.vdrop:
+            rnnfwd = tf.contrib.rnn.MultiRNNCell([cell() for _ in range(self.layers)], state_is_tuple=True)
+            self.initial_state = rnnfwd.zero_state(self.batchsz, tf.float32)
+            rnnout, state = tf.nn.dynamic_rnn(rnnfwd, inputs, initial_state=self.initial_state, dtype=tf.float32)
+            h = tf.reshape(tf.concat(rnnout, 1), [-1, self.hsz])
+            self.final_state = state
+            return h
+
+        from tensorflow.contrib.cudnn_rnn import CudnnLSTM
+        lstm = CudnnLSTM(self.layers, self.hsz, dropout=0.5)
+        rnnout, state = lstm(inputs)
         self.final_state = state
-        return h
+        return tf.reshape(rnnout, [-1, self.hsz])
 
 
 @register_model(task='lm', name='transformer')
