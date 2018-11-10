@@ -3,6 +3,7 @@ import six
 import os
 import sys
 import json
+import math
 import hashlib
 import logging
 import zipfile
@@ -65,6 +66,11 @@ def register(cls, registry, name=None, error=''):
     else:
         registry[name] = cls
     return cls
+
+
+@exporter
+def windowed_sort(data, window=1, key=lambda x: x, **kwargs):
+    return sorted(data, key=lambda p: math.floor(key(p) / window), **kwargs)
 
 
 @contextmanager
