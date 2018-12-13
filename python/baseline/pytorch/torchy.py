@@ -618,3 +618,41 @@ class EmbeddingsContainer(nn.Module):
 
     def update(self, modules):
         raise Exception('Not implemented')
+
+
+class GatedConvEncoder(nn.Module):
+    def __init__(self, insz, outsz, filtsz, pdrop, casual=True):
+        super(GatedConvEncoder, self).__init__()
+        self.outsz = outsz
+        self.insz = insz
+        self.filtsz = filtsz
+        self.weight = nn.Parameter(torch.Tensor(outsz * 2, insz, filtsz))
+        nn.init.kaiming_uniform_(self.weight)
+        self.bias = nn.Parameter(torch.zeros(outsz * 2))
+        self.casual = casual
+        self.pad = filtsz // 2
+        self.dropout = nn.Dropout(pdrop)
+
+    def forward(self, x):
+        if self.casual:
+            x = torch.cat([torch.zeros(list(x.size()[:-1]) + [k-1]), x], dim=2)
+            output = F.conv1d(x, self.weight, self.bias)
+        else:
+            output = F.conv1d(x, self.weight, self.bias, padding=self.pad)
+        conv, gate = torch.chunk(output, 2, dim=1)
+        gate = torch.sigmoid(gate)
+        output = torch.mul(conv, gate)
+        return self.dropout(output)
+
+
+class GatedConvEncoderStack(nn.Module):
+    def __init__(self, insz, outsz, filtsz, pdrop, casual=True, layers=1):
+        super(GatedConvEncoderStack, self).__init__()
+        first_layer = GatedConvEncoder(insz, outsz, filtsz, pdrop, casual=casual)
+        extra_layer = ResidualBlock(GatedConvEncoder(outsz, outsz, filtsz, pdrop, casual=casual))
+        self.layers = nn.ModuleList([first_layer] + [copy.deepcopy(extra_layer) for _ in range(layers - 1)])
+
+    def forward(self, x):
+        for layer in self.layers:
+            x = layer(x)
+        return x

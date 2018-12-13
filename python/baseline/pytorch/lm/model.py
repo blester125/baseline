@@ -142,3 +142,19 @@ class TransformerLanguageModel(LanguageModelBase):
         T = bth.shape[1]
         mask = subsequent_mask(T).type_as(bth)
         return self.transformer(bth, mask), None
+
+
+@register_model(task='lm', name='conv')
+class ConvLanguageModel(LanguageModelBase):
+    def __init__(self):
+        super(ConvLanguageModel, self).__init__()
+
+    def init_decode(self, **kwargs):
+        pdrop = float(kwargs.get('dropout', 0.5))
+        layers = kwargs.get('layers', 4)
+        hsz = kwargs.get('hsz', 256)
+        filtsz = kwargs.get('filtsz', 5)
+        self.stack = GatedConvEncoderStack(self.dsz, self.hsz, filtsz, pdrop=pdrop, casual=True, layers=layers)
+
+    def decode(self, bth, hidden):
+        return self.stack(bth), None
