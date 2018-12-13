@@ -1,0 +1,45 @@
+{
+    "version":2,
+    "basedir":"ptb-med",
+    "task": "lm",
+    "basedir": "ptb-med",
+    "batchsz": 20,
+    "unif": 0.05,
+    "nbptt": 35,
+    "preproc": {
+    },
+    "features": [
+        {
+            "name": "word",
+            "vectorizer": {
+                "type":"token1d",
+                "fields":"text"
+            },
+            "embeddings": {"label":"w2v-gn"}
+        }
+    ],
+    "backend": "pytorch",
+    "dataset": "ptb",
+    "loader": {
+        "reader_type": "default",
+        "tgt_key": "word"
+    },
+    "model": {
+        "model_type": "default",
+        "hsz": 900,
+        "layers": 8,
+        "tie_weights": true,
+        "filtsz": 4,
+        "pdrop": 0.5
+    },
+    "train": {
+        "epochs": 39,
+        "patience": 20,
+        "optim": "sgd",
+        "eta": 35.0,
+        "mom": 0.99,
+        "nsteps": 500,
+        "do_early_stopping": true,
+        "clip": 0.1
+    }
+}
