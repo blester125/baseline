@@ -214,4 +214,3 @@ class OptimizerManager(object):
         for p in self.optimizer.param_groups:
             p['lr'] = lr
         return lr
-

@@ -17,7 +17,7 @@ These models are coded in a backend that is supported by baseline (currently eit
      - https://www.tensorflow.org/hub/installation
 
   - This provides ELMo embeddings to use with any model
-  - The peformance of this model is listed under the [tagger section](../../docs/tagger.md)
+  - The performance of this model is listed under the [tagger section](../../docs/tagger.md)
 
   - For example, you can run this with CONLL2003 as follows:
 
@@ -33,3 +33,11 @@ mead-train --config config/conll-elmo.yml
 - [Depthwise Separable Convolutional classifier](classify_sepcnn.py)
   - This adds the Keras `sepcnn` model discussed in the [ML text-classification guide from google](https://developers.google.com/machine-learning/guides/text-classification/) to the Baseline ecosystem
 
+
+- [Pre-trained contextual string embeddings](embed_string.py)
+   - Requires `flair`
+     - `git clone https://github.com/zalandoresearch/flair.git`
+     - `cd flair`
+     - `pip install .`
+   - The current version of flair on pypi (2/4/2019) turns off baselines loggers which makes it unusable, install the latest version from github as a fix
+   - These embeddings come from [Contextual String Embeddings for Sequence Labeling (Akbik, et. al. 2018)](https://aclanthology.info/papers/C18-1139/c18-1139)
