@@ -163,6 +163,7 @@ class OptimizerManager(object):
     def _init_optimizer(self, model, **kwargs):
         wd = float(kwargs.get('weight_decay', 0))
         optim = kwargs.get('optim', 'sgd')
+        nesterov = bool(kwargs.get('nesterov', False))
         self.current_lr = kwargs.get('eta', kwargs.get('lr', 0.01))
         self.step = self._step_then_update
         if optim == 'adadelta':
@@ -184,7 +185,7 @@ class OptimizerManager(object):
                                    eps=kwargs.get('epsilon', 1e-8), weight_decay=wd)
             self.step = self._step_and_update
         else:
-            self.optimizer = torch.optim.SGD(model.parameters(), lr=self.current_lr, momentum=kwargs.get('mom', 0.9), weight_decay=wd)
+            self.optimizer = torch.optim.SGD(model.parameters(), lr=self.current_lr, momentum=kwargs.get('mom', 0.9), weight_decay=wd, nesterov=nesterov)
 
     def _identity(self, _):
         return self.current_lr

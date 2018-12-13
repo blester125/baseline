@@ -626,3 +626,13 @@ def layer_norm(input, name, axis=[-1]):
         gv = tf.get_variable("g", [n_state], initializer=tf.constant_initializer(1))
         bv = tf.get_variable("b", [n_state], initializer=tf.constant_initializer(0))
         return _norm(input, gv, bv, axis=axis)
+
+
+def gated_linear_unit(x, axis):
+    output, gate = tf.split()
+
+def gated_conv1d(x, outsz, filtsz, pdrop, casual=True):
+    DUMMY_AXIS = 1
+    TIME_AXIS = 2
+    FEATURE_AXIS = 3
+    expanded = tf.expand_dims(input_, DUMMY_AXIS)

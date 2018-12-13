@@ -1,13 +1,11 @@
 {
     "version":2,
-    "basedir":"ptb-med",
+    "basedir":"ptb-med-conv",
     "task": "lm",
-    "basedir": "ptb-med",
     "batchsz": 20,
     "unif": 0.05,
     "nbptt": 35,
-    "preproc": {
-    },
+    "preproc": {},
     "features": [
         {
             "name": "word",
@@ -30,7 +28,7 @@
         "layers": 8,
         "tie_weights": true,
         "filtsz": 4,
-        "pdrop": 0.5
+        "pdrop": 0.1
     },
     "train": {
         "epochs": 39,
@@ -38,8 +36,9 @@
         "optim": "sgd",
         "eta": 35.0,
         "mom": 0.99,
+        "nesterov": true,
         "nsteps": 500,
         "do_early_stopping": true,
-        "clip": 0.1
+        "clip": 0.01
     }
 }

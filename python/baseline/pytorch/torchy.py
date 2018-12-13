@@ -620,29 +620,32 @@ class EmbeddingsContainer(nn.Module):
         raise Exception('Not implemented')
 
 
+def gated_linear_unit(x, dim):
+    output, gate = torch.chunk(x, 2, dim=dim)
+    gate = torch.sigmoid(gate)
+    return torch.mul(output, gate)
+
+
+class CasualConv1d(nn.Conv1d):
+    def forward(self, x):
+        pad = torch.zeros(list(x.size()[:-1]) + [self.kernel_size[0] - 1])
+        x = torch.cat([pad, x], dim=2)
+        return super(CasualConv1d, self).forward(x)
+
+
 class GatedConvEncoder(nn.Module):
     def __init__(self, insz, outsz, filtsz, pdrop, casual=True):
         super(GatedConvEncoder, self).__init__()
-        self.outsz = outsz
-        self.insz = insz
-        self.filtsz = filtsz
-        self.weight = nn.Parameter(torch.Tensor(outsz * 2, insz, filtsz))
-        nn.init.kaiming_uniform_(self.weight)
-        self.bias = nn.Parameter(torch.zeros(outsz * 2))
-        self.casual = casual
-        self.pad = filtsz // 2
+        if casual:
+            self.conv = CasualConv1d(insz, outsz * 2, filtsz)
+        else:
+            self.conv = nn.Conv1d(insz, outsz * 2, filtsz, padding=filtsz//2)
         self.dropout = nn.Dropout(pdrop)
 
     def forward(self, x):
-        if self.casual:
-            x = torch.cat([torch.zeros(list(x.size()[:-1]) + [k-1]), x], dim=2)
-            output = F.conv1d(x, self.weight, self.bias)
-        else:
-            output = F.conv1d(x, self.weight, self.bias, padding=self.pad)
-        conv, gate = torch.chunk(output, 2, dim=1)
-        gate = torch.sigmoid(gate)
-        output = torch.mul(conv, gate)
-        return self.dropout(output)
+        x = self.conv(x)
+        x = gated_linear_unit(x, dim=1)
+        return self.dropout(x)
 
 
 class GatedConvEncoderStack(nn.Module):
