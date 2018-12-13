@@ -154,7 +154,8 @@ class ConvLanguageModel(LanguageModelBase):
         layers = kwargs.get('layers', 4)
         hsz = kwargs.get('hsz', 256)
         filtsz = kwargs.get('filtsz', 5)
-        self.stack = GatedConvEncoderStack(self.dsz, self.hsz, filtsz, pdrop=pdrop, casual=True, layers=layers)
+        act = kwargs.get('activation_type', 'relu')
+        self.stack = GatedConvEncoderStack(self.dsz, self.hsz, filtsz, pdrop=pdrop, casual=True, layers=layers, activation_type=act)
 
     def decode(self, bth, hidden):
         return self.stack(bth), None

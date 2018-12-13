@@ -649,13 +649,14 @@ class GatedConvEncoder(nn.Module):
 
 
 class GatedConvEncoderStack(nn.Module):
-    def __init__(self, insz, outsz, filtsz, pdrop, casual=True, layers=1):
+    def __init__(self, insz, outsz, filtsz, pdrop, casual=True, layers=1, activation_type='relu'):
         super(GatedConvEncoderStack, self).__init__()
         first_layer = GatedConvEncoder(insz, outsz, filtsz, pdrop, casual=casual)
         extra_layer = ResidualBlock(GatedConvEncoder(outsz, outsz, filtsz, pdrop, casual=casual))
         self.layers = nn.ModuleList([first_layer] + [copy.deepcopy(extra_layer) for _ in range(layers - 1)])
+        self.act = pytorch_activation(activation_type)
 
     def forward(self, x):
         for layer in self.layers:
-            x = layer(x)
+            x = self.act(layer(x))
         return x
