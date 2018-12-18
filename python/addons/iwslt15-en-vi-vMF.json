@@ -1,0 +1,45 @@
+{
+    "task": "seq2seq",
+    "modules": ["seq2seq_vMF"],
+    "num_valid_to_show": 0,
+    "batchsz": 100,
+    "basedir": "vMF",
+    "unif": 0.25,
+    "features": [
+	    {
+	        "name": "src",
+    	    "vectorizer": { "type": "token1d"},
+	        "embeddings": { "label": "glove-840B" }
+	    },
+	    {
+	        "name": "tgt",
+    	    "vectorizer": { "type": "token1d"},
+	        "embeddings": { "label": "glove-840B" }
+	    }
+    ],
+    "preproc": {
+        "mxlen": 50
+    },
+    "backend": "pytorch",
+    "dataset": "iwslt15-en-vi",
+    "loader": {
+        "reader_type": "default",
+    	"pair_suffix": ["en", "vi"]
+    },
+
+    "model": {
+        "model_type": "vMF",
+        "decoder_type": "attn",
+        "rnntype": "blstm",
+        "hsz": 512,
+        "dropout": 0.5,
+        "layers": 2
+    },
+    "train": {
+        "epochs": 32,
+        "optim": "adam",
+        "eta": 0.001,
+	    "do_early_stopping": true,
+        "clip": 1.0
+    }
+}
