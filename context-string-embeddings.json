@@ -1,0 +1,45 @@
+{
+    "basedir":"context-str",
+    "task": "lm",
+    "batchsz": 100,
+    "unif": 0.05,
+    "nbptt": 250,
+    "modules": ["biLM"],
+    "preproc": {
+    },
+    "features": [
+        {
+            "name": "char",
+            "vectorizer": {
+                "type":"char1d",
+                "fields":"text"
+            },
+            "embeddings": {"dsz": 100}
+        }
+    ],
+    "backend": "pytorch",
+    "dataset": "ptb",
+    "loader": {
+        "reader_type": "default",
+        "tgt_key": "char"
+    },
+    "model": {
+        "model_type": "biLM",
+        "hsz": 2048,
+        "layers": 1,
+        "vdrop": true,
+        "pdrop": 0.25
+    },
+    "train": {
+        "trainer_type": "biLM",
+        "epochs": 30,
+        "decay_rate": 1.2,
+        "patience": 20,
+        "optim": "sgd",
+        "eta": 20.0,
+        "mom": 0.0,
+        "nsteps": 500,
+        "do_early_stopping": true,
+        "clip": 0.25
+    }
+}
