@@ -11,7 +11,7 @@
 	  "transform": "baseline.lowercase"
     },
       "embeddings": {
-        "label": "glove-6B-300", "norm": true, "type": "intra-attn"
+        "label": "glove-840B", "norm": true, "type": "intra-attn"
     }
   }],
   "preproc": {

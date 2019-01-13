@@ -3,9 +3,12 @@
   [ ] Build a GOVectorizer that doesn't add EOS
   [X] Hash OOV vectorizer
 [ ] Train and get good results.
+[ ] Remove lowercasing
+[ ] Add a down projection to 200 before the F neural net.
 [X] Build Reader
 [X] Build Model
   [X] Intra Sentence Embedding Object
   [X] Optimized Attention for Intra Sentence
   [X] Build FNN utilities
   [X] Decomposable Attention
+[X] Move to Glove 840B
