@@ -1,0 +1,10 @@
+[
+  {
+    "train_file": "snli_1.0/snli_1.0_train.jsonl",
+    "valid_file": "snli_1.0/snli_1.0_dev.jsonl",
+    "test_file": "snli_1.0/snli_1.0_test.jsonl",
+    "download": "https://nlp.stanford.edu/projects/snli/snli_1.0.zip",
+    "sha1": "9fcde07509c7e87ec61c640c1b2753d9041758e4",
+    "label": "snli"
+  }
+]

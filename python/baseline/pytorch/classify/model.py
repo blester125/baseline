@@ -26,7 +26,7 @@ class ClassifierModelBase(nn.Module, ClassifierModel):
     def create(cls, embeddings, labels, **kwargs):
 
         model = cls()
-        model.pdrop = kwargs.get('pdrop', 0.5)
+        model.pdrop = kwargs.get('pdrop', kwargs.get('dropout', 0.5))
         model.lengths_key = kwargs.get('lengths_key')
         input_sz = model.init_embed(embeddings)
         model.gpu = not bool(kwargs.get('nogpu', False))
