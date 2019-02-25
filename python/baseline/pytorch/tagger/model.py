@@ -70,6 +70,7 @@ class TaggerModelBase(nn.Module, TaggerModel):
         model.lengths_key = kwargs.get('lengths_key')
         model.proj = bool(kwargs.get('proj', False))
         model.use_crf = bool(kwargs.get('crf', False))
+        model.use_spl = bool(kwargs.get('spl', False))
         model.activation_type = kwargs.get('activation', 'tanh')
         constraint = kwargs.get('constraint')
 
@@ -106,7 +107,10 @@ class TaggerModelBase(nn.Module, TaggerModel):
                 model.register_buffer('constraint', constraint.unsqueeze(0))
             else:
                 model.constraint = None
-            model.crit = SequenceCriterion(LossFn=nn.CrossEntropyLoss, avg='batch')
+            if model.use_spl:
+                model.crit = StructuredPerceptronLoss(int(kwargs.get('margin', 2)))
+            else:
+                model.crit = SequenceCriterion(LossFn=nn.CrossEntropyLoss, avg='batch')
         logger.info(model)
         return model
 
@@ -197,6 +201,19 @@ class TaggerModelBase(nn.Module, TaggerModel):
             tags = tags.transpose(0, 1)
             lengths = lengths.to(probv.device)
             batch_loss = torch.mean(self.crf.neg_log_loss(probv, tags.data, lengths))
+        elif self.use_spl is True:
+            if self.constraint is not None:
+                lengths = lengths.to(probv.device)
+                probv = F.log_softmax(probv, dim=-1)
+                preds, _ = viterbi(
+                    probv, self.constraint, lengths,
+                    Offsets.GO, Offsets.EOS,
+                    norm=F.log_softmax
+                )
+            else:
+                _, preds = torch.max(probv, 2)
+            tags = tags.transpose(0, 1)
+            batch_loss = self.crit(probv, preds, tags)
         else:
             # Get batch (B, T)
             probv = probv.transpose(0, 1).contiguous()

@@ -165,6 +165,10 @@ def fit(model, ts, vs, es, **kwargs):
     after_train_fn = kwargs.get('after_train_fn', None)
     trainer = create_trainer(model, **kwargs)
 
+    checkpoint = kwargs.get('checkpoint')
+    if checkpoint is not None:
+        model = model.load(checkpoint)
+
     last_improved = 0
     for epoch in range(epochs):
 

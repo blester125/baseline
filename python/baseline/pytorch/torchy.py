@@ -11,6 +11,31 @@ from baseline.utils import lookup_sentence, get_version, Offsets
 PYT_MAJOR_VERSION = get_version(torch)
 
 
+class StructuredPerceptronLoss(nn.Module):
+
+    def __init__(self, margin=0, ignore_index=0, batch_first=False):
+        super(StructuredPerceptronLoss, self).__init__()
+        self.ignore_index = ignore_index
+        self.register_buffer('margin', torch.FloatTensor([margin]))
+        self.reduction_dim = 1 if batch_first else 0
+
+    def forward(self, scores, y_hat, y):
+        """Calculate the Structured Perceptron Loss for NNs.
+
+        :param scores: `torch.FloatTensor` [T, B, C] The scores for each class.
+        :param y_hat: `torch.LongTensor` [T, B] The best decoded tag sequence.
+        :param y: `torch.LongTensor` [T, B]` The gold tag sequence.
+        """
+        # out[i][j][k] = input[i][j][index[i][j][k]]  # if dim == 2
+        # scores[b][t][0] = input[b][t][index[b][t][0]]
+        y_hat_score = scores.gather(2, y_hat.unsqueeze(-1)).squeeze(-1)  # [T, B]
+        y_score = scores.gather(2, y.unsqueeze(-1)).squeeze(-1)  # [T, B]
+        diff = y_hat_score - y_score
+        masked_diff = diff.masked_fill(y == self.ignore_index, 0)
+        seq_loss = torch.sum(masked_diff, dim=self.reduction_dim) + self.margin
+        return torch.mean(seq_loss)
+
+
 def sequence_mask(lengths, max_len=-1):
     """Produce a sequence mask BxT
 
