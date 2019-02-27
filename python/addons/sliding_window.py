@@ -8,20 +8,52 @@ from baseline.pytorch.torchy import pytorch_activation
 
 
 class SlidingWindow(nn.Module):
-    def __init__(self, insz, outsz, window_size):
-        assert window_size % 2 == 1
+    def __init__(self, insz, outsz, windowsz):
         super(SlidingWindow, self).__init__()
-        self.linear = nn.Linear(insz * window_size, outsz)
-        self.pad = window_size // 2
-        self.window_size = window_size
+        self.linear = nn.Linear(insz * windowsz, outsz)
+        self.pad = (
+            0, 0,  # Padding on the C dim
+            # Padding on the T dim
+            (windowsz - 1) // 2,  # Padding on the top
+            (windowsz - 1) - (windowsz - 1) // 2  # Padding on the bottom
+        )
+        self.window_size = windowsz
 
     def forward(self, x):
         B = x.size(0)
         T = x.size(1)
-        x = F.pad(x, (0, 0, self.pad, self.pad), 'constant', 0)
+        x = F.pad(x, self.pad, 'constant', 0)
         x = x.unfold(1, self.window_size, 1)
-        x = x.transpose(-1, -2).view(B, T, -1)
+        x = x.transpose(-1, -2)
+        x = x.contiguous().view(B, T, -1)
         return self.linear(x)
+
+
+class ParallelSlidingWindows(nn.Module):
+    def __init__(self, insz, outsz, windowsz, activation_type, pdrop):
+        super(ParallelSlidingWindows, self).__init__()
+        windows = []
+        if isinstance(outsz, int):
+            outsz = [outsz] * len(windowsz)
+
+        self.outsz = sum(outsz)
+        for osz, wsz in zip(outsz, windowsz):
+            window = nn.Sequential(
+                SlidingWindow(insz, osz, wsz),
+                pytorch_activation(activation_type)
+            )
+            windows.append(window)
+        self.windows = nn.ModuleList(windows)
+        self.drop = nn.Dropout(pdrop)
+
+    def forward(self, btc):
+        mots = []
+        for win in self.windows:
+            win_out = win(btc)
+            mot, _ = win_out.max(1)
+            mots.append(mot)
+        mots = torch.cat(mots, 1)
+        return self.drop(mots)
 
 
 @register_model(task='classify', name='window')
@@ -29,26 +61,11 @@ class WindowClassifier(ClassifierModelBase):
     def init_pool(self, dsz, **kwargs):
         windowsz = kwargs['filtsz']
         outsz = kwargs['cmotsz']
-        act = kwargs.get('act', 'relu')
-        windows = []
-        for w in windowsz:
-            wind = nn.Sequential(
-                SlidingWindow(dsz, outsz, w),
-                pytorch_activation(act)
-            )
-            windows.append(wind)
-        self.windows = nn.ModuleList(windows)
-        self.drop = nn.Dropout(self.pdrop)
-        return outsz * len(windowsz)
+        self.parallel_windows = ParallelSlidingWindows(dsz, outsz, windowsz, 'relu', self.pdrop)
+        return self.parallel_windows.outsz
 
     def pool(self, btc, lengths):
-        mots = []
-        for win in self.windows:
-            wind_out = win(btc)
-            mot, _ = wind_out.max(1)
-            mots.append(mot)
-        mots = torch.cat(mots, 1)
-        return self.drop(mots)
+        return self.parallel_windows(btc)
 
 
 
