@@ -171,7 +171,7 @@ def pytorch_activation(name="relu"):
     if name == "tanh":
         return nn.Tanh()
     if name == "identity":
-        return nn.Identity()
+        return nn.Sequential()
     if name == "hardtanh":
         return nn.Hardtanh()
     if name == "prelu":

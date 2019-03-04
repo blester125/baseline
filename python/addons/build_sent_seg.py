@@ -5,9 +5,9 @@ from functools import partial
 
 
 DOCID = "# newdoc"
-NOTOK = 0
-EOW = 1
-EOS = 2
+NONTOK = 'NON_TOK'
+EOW = 'EOW'
+EOS = 'EOS'
 
 
 def start_space(x):
@@ -62,9 +62,9 @@ def joint_character_level(sentence, featurize):
                     continue
                 rows.append([c, EOW] + featurize(c))
                 if end != 'SpaceAfter=No':
-                    rows.append([' ', NOTOK] + featurize(' '))
+                    rows.append([' ', NONTOK] + featurize(' '))
             else:
-                rows.append([c, NOTOK] + featurize(c))
+                rows.append([c, NONTOK] + featurize(c))
     return rows
 
 
@@ -76,18 +76,18 @@ def seg_character_level(sentence, featurize):
                 if i == len(sentence) - 1:
                     rows.append([c, EOS] + featurize(c))
                     continue
-                rows.append([c, NOTOK] + featurize(c))
+                rows.append([c, NONTOK] + featurize(c))
                 if end != 'SpaceAfter=No':
-                    rows.append([' ', NOTOK] + featurize(' '))
+                    rows.append([' ', NONTOK] + featurize(' '))
             else:
-                rows.append([c, NOTOK] + featurize(c))
+                rows.append([c, NONTOK] + featurize(c))
     return rows
 
 
 def process_word_level(sentence, featurize):
     rows = []
     for i, (word, end) in enumerate(sentence):
-        label = EOW if i == len(sentence) - 1 else NOTOK
+        label = EOW if i == len(sentence) - 1 else NONTOK
         rows.append([word, label] + featurize(word))
     return rows
 
@@ -119,7 +119,7 @@ def read_conllu(file_name, process_sentence, featurize):
 
 
 def write_conll(file_name, docs):
-    with open(file_name, 'w') as csvfile:
+    with open(file_name, 'w', encoding='utf-8') as csvfile:
         writer = csv.writer(csvfile, delimiter='\t', quoting=csv.QUOTE_MINIMAL, lineterminator="\n")
         csvfile.write(DOCID + "\n")
         for doc in docs:

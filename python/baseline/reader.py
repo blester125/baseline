@@ -331,8 +331,8 @@ class SeqPredictReader(object):
 @register_reader(task='tagger', name='default')
 class CONLLSeqReader(SeqPredictReader):
 
-    def __init__(self, vectorizers, trim=False, truncate=False, **kwargs):
-        super(CONLLSeqReader, self).__init__(vectorizers, trim, truncate, **kwargs)
+    def __init__(self, vectorizers, trim=False, truncate=False, mxlen=-1, **kwargs):
+        super(CONLLSeqReader, self).__init__(vectorizers, trim, truncate, mxlen, **kwargs)
         self.named_fields = kwargs.get('named_fields', {})
 
     def read_examples(self, tsfile):
