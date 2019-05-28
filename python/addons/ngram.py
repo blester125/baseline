@@ -91,8 +91,6 @@ class DictTextNGramVectorizer(TextNGramVectorizer):
     def iterable(self, tokens):
         return _token_iterator(self, tokens)
 
-import logging
-LOGGER = logging.getLogger('baseline')
 
 @register_embeddings(name='elmo-gram')
 class ELMoHubGramEmbeddings(ELMoHubEmbeddings):
@@ -103,17 +101,12 @@ class ELMoHubGramEmbeddings(ELMoHubEmbeddings):
 
     def encode(self, x=None):
         x = x if x is not None else ELMoHubGramEmbeddings.create_placeholder(self.name)
-        LOGGER.warning(x.get_shape())
         B, T, N = get_shape_as_list(x)
         x = tf.reshape(x, [B * T, N])
-        LOGGER.warning(x.get_shape())
         elmoed = super(ELMoHubGramEmbeddings, self).encode(x)
-        LOGGER.warning(elmoed.get_shape())
         elmoed = tf.reduce_mean(elmoed, axis=1)
-        LOGGER.warning(elmoed.get_shape())
         x = tf.reshape(elmoed, [B, T, self.dsz])
-        LOGGER.warning(x.get_shape())
-        return x
+        return tf.stop_gradient(x)
 
 
 
