@@ -16,10 +16,10 @@ class NGramVectorizer(Token1DVectorizer):
         assert n % 2 != 0, "n must be odd."
         self.n = n
         self.m = n // 2
-        self.buf = deque(maxlen=n)
         super(NGramVectorizer, self).__init__(**kwargs)
 
     def run(self, tokens, vocab):
+        buf = deque(maxlen=self.n)
         if self.mxlen < 0:
             self.mxlen = self.max_seen
 
@@ -29,9 +29,9 @@ class NGramVectorizer(Token1DVectorizer):
             if i - self.m == self.mxlen:
                 i -= 1
                 break
-            self.buf.append(atom)
+            buf.append(atom)
             if i >= self.m:
-                vec2d[i - self.m, :len(self.buf)] = self.buf
+                vec2d[i - self.m, :len(buf)] = buf
         valid_length = i - self.m + 1
 
         if self.time_reverse:
@@ -57,10 +57,10 @@ class TextNGramVectorizer(Text1DVectorizer):
         assert n % 2 != 0, "n must be odd."
         self.n = n
         self.m = n // 2
-        self.buf = deque(maxlen=n)
         super(TextNGramVectorizer, self).__init__(**kwargs)
 
     def run(self, tokens, vocab):
+        buf = deque(maxlen=self.n)
         if self.mxlen < 0:
             self.mxlen = self.max_seen
 
@@ -70,9 +70,9 @@ class TextNGramVectorizer(Text1DVectorizer):
             if i - self.m == self.mxlen:
                 i -= 1
                 break
-            self.buf.append(atom)
+            buf.append(atom)
             if i >= self.m:
-                vec2d[i - self.m, :len(self.buf)] = self.buf
+                vec2d[i - self.m, :len(buf)] = buf
         valid_length = i - self.m + 1
 
         if self.time_reverse:
@@ -121,7 +121,8 @@ if __name__ == "__main__":
     }
 
     tokens = ["The", "Brown", "Dog", "ran", "away"]
-    n = 5
+
+    n = 3
     l = 4
 
     v = NGramVectorizer(n=n)
