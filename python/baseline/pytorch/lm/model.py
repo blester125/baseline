@@ -104,10 +104,8 @@ class LanguageModelBase(nn.Module, LanguageModel):
 
     def init_output(self, vsz, **kwargs):
         unif = float(kwargs.get('unif', 0.0))
-        do_weight_tying = bool(kwargs.get('tie_weights', False))
-        self.proj = pytorch_linear(self.hsz, vsz, unif)
-        if do_weight_tying and self.hsz == self.embeddings[self.tgt_key].get_dsz():
-            self.proj.weight = self.embeddings[self.tgt_key].embeddings.weight
+        tie = self.embeddings[self.tgt_key].embeddings.weight if bool(kwargs.get('tie_weights', False)) else None
+        self.proj = pytorch_linear(self.hsz, vsz, unif, tied=tie)
 
     def output(self, x):
         outputs = self.proj(x)

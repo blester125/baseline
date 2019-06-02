@@ -20,7 +20,7 @@
     "preproc": {
         "mxlen": 10
     },
-    "backend": "tensorflow",
+    "backend": "pytorch",
     "dataset": "reverse",
     "loader": {
         "reader_type": "default",

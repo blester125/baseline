@@ -196,7 +196,9 @@ def pytorch_conv1d(in_channels, out_channels, fsz, unif=0, padding=0, initialize
     return c
 
 
-def pytorch_linear(in_sz, out_sz, unif=0, initializer=None):
+def pytorch_linear(in_sz, out_sz, unif=0, initializer=None, tied=None):
+    if tied is not None:
+        return WeightTieLinear(in_sz, out_sz, tied=tied)
     l = nn.Linear(in_sz, out_sz)
     if unif > 0:
         l.weight.data.uniform_(-unif, unif)
@@ -211,6 +213,25 @@ def pytorch_linear(in_sz, out_sz, unif=0, initializer=None):
     return l
 
 
+class WeightTieLinear(nn.Linear):
+    def __init__(self, in_features, out_features, tied, bias=True):
+        super(WeightTieLinear, self).__init__(in_features, out_features, bias=bias)
+        if self.in_features == tied.shape[1] and self.out_features == tied.shape[0]:
+            self.transform = self._identity
+        elif self.in_features == tied.shape[0] and self.out_features == tied.shape[1]:
+            self.transform = torch.transpose
+        else:
+            raise ValueError("Weights cannot be tied. Expected [in, out] to equal tied.shape or transpose(tied).shape. Got [{}, {}] and {}".format(in_features, out_features, tied.shape))
+        del self.weight
+        self.weight = tied
+
+    def _identity(self, x, _, _1):
+        return x
+
+    def forward(self, input):
+        return F.linear(input, self.transform(self.weight, 0, 1), self.bias)
+
+
 def tie_weight(to_layer, from_layer):
     """Assigns a weight object to the layer weights.
 
@@ -220,6 +241,7 @@ def tie_weight(to_layer, from_layer):
     :param from_layer: pytorch layer to retrieve weights from  
     """
     to_layer.weight = from_layer.weight
+
 
 def pytorch_clone_module(module_, N):
     return nn.ModuleList([copy.deepcopy(module_) for _ in range(N)])
