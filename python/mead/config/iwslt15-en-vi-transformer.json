@@ -1,7 +1,8 @@
 {
     "task": "seq2seq",
     "num_valid_to_show": 0,
-    "batchsz": 128,
+    "batchsz": 64,
+    "test_batchsz": 16,
     "basedir": "iwslt15-en-vi-transformer",
     "unif": 0.25,
     "features": [
@@ -19,7 +20,7 @@
     "preproc": {
         "mxlen": 50
     },
-    "backend": "tensorflow",
+    "backend": "pytorch",
     "dataset": "iwslt15-en-vi",
     "loader": {
         "reader_type": "default",

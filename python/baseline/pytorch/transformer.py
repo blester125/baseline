@@ -56,6 +56,16 @@ def dot_product_attention(query, key, value, mask=None, dropout=None):
     return torch.matmul(p_attn, value), p_attn
 
 
+def seq_bahdanau_attention(query, key, value, V, mask=None, dropout=None):
+    scores = V(torch.tanh(query.unsqueeze(-2) + key.unsqueeze(-3))).squeeze(-1)
+    if mask is not None:
+        scores = scores.masked_fill(mask == 0, -1e9)
+    weights = F.softmax(scores, dim=-1)
+    if dropout is not None:
+        weights = dropout(weights)
+    return torch.matmul(weights, value), weights
+
+
 class MultiHeadedAttention(nn.Module):
     """
     Multi-headed attention from https://arxiv.org/abs/1706.03762 via http://nlp.seas.harvard.edu/2018/04/03/attention.html
@@ -94,6 +104,8 @@ class MultiHeadedAttention(nn.Module):
         self.w_V = pytorch_linear(d_model, d_model)
         self.w_O = pytorch_linear(d_model, d_model)
         self.attn_fn = scaled_dot_product_attention if scale else dot_product_attention
+        self.V = pytorch_linear(self.d_k, 1, bias=False)
+        self.attn_fn = seq_bahdanau_attention
         self.attn = None
         self.dropout = nn.Dropout(dropout)
 
@@ -113,7 +125,8 @@ class MultiHeadedAttention(nn.Module):
         key = self.w_K(key).view(batchsz, -1, self.h, self.d_k).transpose(1, 2)
         value = self.w_V(value).view(batchsz, -1, self.h, self.d_k).transpose(1, 2)
 
-        x, self.attn = self.attn_fn(query, key, value, mask=mask, dropout=self.dropout)
+        # x, self.attn = self.attn_fn(query, key, value, mask=mask, dropout=self.dropout)
+        x, self.attn = self.attn_fn(query, key, value, self.V, mask=mask, dropout=self.dropout)
 
         x = x.transpose(1, 2).contiguous() \
             .view(batchsz, -1, self.h * self.d_k)

@@ -196,8 +196,8 @@ def pytorch_conv1d(in_channels, out_channels, fsz, unif=0, padding=0, initialize
     return c
 
 
-def pytorch_linear(in_sz, out_sz, unif=0, initializer=None):
-    l = nn.Linear(in_sz, out_sz)
+def pytorch_linear(in_sz, out_sz, unif=0, initializer=None, bias=True):
+    l = nn.Linear(in_sz, out_sz, bias=bias)
     if unif > 0:
         l.weight.data.uniform_(-unif, unif)
     elif initializer == "ortho":
@@ -206,8 +206,8 @@ def pytorch_linear(in_sz, out_sz, unif=0, initializer=None):
         nn.init.kaiming_uniform(l.weight)
     else:
         nn.init.xavier_uniform_(l.weight)
-
-    l.bias.data.zero_()
+    if bias:
+        l.bias.data.zero_()
     return l
 
 
