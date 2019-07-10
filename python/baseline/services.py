@@ -383,6 +383,12 @@ class TaggerService(Service):
             return []
         return tokens_seq, mxlen, mxwlen
 
+    def token_scores(self, tokens, **kwargs):
+        tokens_seq, mxlen, mxwlen = self.batch_input(tokens)
+        self.set_vectorizer_lens(mxlen, mxwlen)
+        examples = self.vectorize(tokens_seq)
+        return self.model.token_scores(examples)
+
     def predict(self, tokens, **kwargs):
         """
         Utility function to convert lists of sentence tokens to integer value one-hots which

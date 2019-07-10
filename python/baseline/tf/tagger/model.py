@@ -226,6 +226,12 @@ class TaggerModelBase(TaggerModel):
         bestv = self.sess.run(self.best, feed_dict=feed_dict)
         return [pij[:sl] for pij, sl in zip(bestv, lengths)]
 
+    def token_scores(self, batch_dict):
+        feed_dict = self.make_input(batch_dict)
+        lengths = batch_dict[self.lengths_key]
+        probs = self.sess.run(self.probs, feed_dict=feed_dict)
+        return probs
+
     def embed(self, **kwargs):
         """This method performs "embedding" of the inputs.  The base method here then concatenates along depth
         dimension to form word embeddings
