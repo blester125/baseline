@@ -138,6 +138,30 @@ class CRF(nn.Module):
         alphas = vec_log_sum_exp(terminal_vars, 2)
         return alphas.view(batch_size)
 
+    def forward_with_states(self, unary, lengths, batch_size):
+        min_length = torch.min(lengths)
+        forwards = []
+        alphas = torch.Tensor(batch_size, 1, self.n_tags).fill_(-1e4).to(unary.device)
+        alphas[:, 0, self.start_idx] = 0.
+        alphas.requires_grad = True
+
+        trans = self.transitions
+
+        for i, unary_t in enumerate(unary):
+            unary_t = unary_t.unsqueeze(2)
+            scores = alphas + trans + unary_t
+            new_alphas = vec_log_sum_exp(scores, 2).transpose(1, 2)
+            if i >= min_length:
+                mask = (i < lengths).view(-1, 1, 1)
+                alphas = alphas.masked_fill(mask, 0) + new_alphas.masked_fill(mask == 0, 0)
+            else:
+                alphas = new_alphas
+            forwards.append(alphas)
+
+        terminal_vars = alphas + trans[:, self.end_idx]
+        alphas = vec_log_sum_exp(terminal_vars, 2)
+        return alphas.view(batch_size), forwards
+
     def decode(self, unary, lengths):
         """Do Viterbi decode on a batch.
 
