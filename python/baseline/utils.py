@@ -390,6 +390,74 @@ def iobes_mask(vocab, start, end, pad=None):
     return mask
 
 
+def gappy_iobes_mask(vocab, start, end, pad=None):
+    """An IOBES mask that can handle gaps in the sequence.
+
+    This is like the normal iobes mask but anything can move to and O
+    and an O can move to anything.
+    """
+    small = 0
+    mask = np.ones((len(vocab), len(vocab)), dtype=np.float32)
+    for from_ in vocab:
+        for to in vocab:
+            # Can't move to start
+            if to is start:
+                mask[vocab[to], vocab[from_]] = small
+            # Can't move from end
+            if from_ is end:
+                mask[vocab[to], vocab[from_]] = small
+            # Can only move from pad to pad or to end
+            if from_ is pad:
+                if not(to is pad or to is end):
+                    mask[vocab[to], vocab[from_]] = small
+            elif from_ is start:
+                # Can't move from start to I or E
+                if to.startswith("I-") or to.startswith("E-"):
+                    mask[vocab[to], vocab[from_]] = small
+            else:
+                if from_.startswith("B-"):
+                    # Can't move from B to B, S, End, or Pad
+                    if (
+                        to.startswith("B-") or
+                        to.startswith("S-") or
+                        to is end or
+                        to is pad
+                    ):
+                        mask[vocab[to], vocab[from_]] = small
+                    # Can only move to matching I or E
+                    elif to.startswith("I-") or to.startswith("E-"):
+                        from_type = from_.split("-")[1]
+                        to_type = to.split("-")[1]
+                        if from_type != to_type:
+                            mask[vocab[to], vocab[from_]] = small
+                elif from_.startswith("I-"):
+                    # Can't move from I to B, S, End or Pad
+                    if (
+                        to.startswith("B-") or
+                        to.startswith("S-") or
+                        to is end or
+                        to is pad
+                    ):
+                        mask[vocab[to], vocab[from_]] = small
+                    # Can only move to matching I or E
+                    elif to.startswith("I-") or to.startswith("E-"):
+                        from_type = from_.split("-")[1]
+                        to_type = to.split("-")[1]
+                        if from_type != to_type:
+                            mask[vocab[to], vocab[from_]] = small
+                elif (
+                    from_.startswith("E-") or
+                    from_.startswith("I-") or
+                    from_.startswith("S-") or
+                ):
+                    # Can't move from E to I or E
+                    # Can't move from I to I or E
+                    # Can't move from S to I or E
+                    if to.startswith("I-") or to.startswith("E-"):
+                        mask[vocab[to], vocab[from_]] = small
+    return mask
+
+
 @exporter
 def get_version(pkg):
     s = '.'.join(pkg.__version__.split('.')[:2])
@@ -1256,6 +1324,86 @@ def to_chunks_iobes(sequence, verbose=False, delim="@"):
             if current is not None:
                 chunks.append(delim.join(current))
             current = None
+    # If something is left, flush
+    if current is not None:
+        chunks.append(delim.join(current))
+    return chunks
+
+
+def to_gappy_chunks_iobes(sequence, verbose=False, delim="@"):
+    """Turn a sequence of IOBES tags into a list of chunks.
+
+    >>> a = ['O', 'B-X', 'O', 'O', 'E-X', 'S-Y', 'I-Z', 'E-Z']
+    >>> to_gappy_chunks_iobes(a)
+    ['X@1@4', 'Y@5', 'Z@6@7']
+
+    :param sequence: `List[str]` The tag sequence.
+    :param verbose: `bool` Should we output warning on illegal transitions.
+    :param delim: `str` The symbol the separates output chunks from their indices.
+
+    :returns: `List[str]` The list of entities in the order they appear. The
+        entities are in the form {chunk_type}{delim}{index}{delim}{index}...
+        for example LOC@3@4@5 means a Location chunk was at indices 3, 4, and 5
+        in the original sequence.
+    """
+    chunks = []
+    current = None
+    for i, label in enumerate(sequence):
+        # This indicates a multi-word chunk start
+        if label.startswith('B-'):
+            # Flush existing chunk
+            if current is not None:
+                chunks.append(delim.join(current))
+            # Create a new chunk
+            current = [label.replace('B-', ''), '%d' % i]
+        # This indicates a single word chunk
+        elif label.startswith('S-'):
+            # Flush existing chunk, and since this is self-contained, we will clear current
+            if current is not None:
+                chunks.append(delim.join(current))
+                current = None
+            base = label.replace('S-', '')
+            # Write this right into the chunks since self-contained
+            chunks.append(delim.join([base, '%d' % i]))
+        # Indicates we are inside of a chunk already
+        elif label.startswith('I-'):
+            # This should always be the case!
+            if current is not None:
+                base = label.replace('I-', '')
+                if base == current[0]:
+                    current.append('%d' % i)
+                else:
+                    chunks.append(delim.join(current))
+                    if verbose:
+                        logger.warning('Warning: I without matching previous B/I @ %d' % i)
+                    current = [base, '%d' % i]
+            else:
+                if verbose:
+                    logger.warning('Warning: I without a previous chunk @ %d' % i)
+                current = [label.replace('I-', ''), '%d' % i]
+        # We are at the end of a chunk, so flush current
+        elif label.startswith('E-'):
+            # Flush current chunk
+            if current is not None:
+                base = label.replace('E-', '')
+                if base == current[0]:
+                    current.append('%d' % i)
+                    chunks.append(delim.join(current))
+                    current = None
+                else:
+                    chunks.append(delim.join(current))
+                    if verbose:
+                        logger.warning("Warning: E doesn't agree with previous B/I type!")
+                    current = [base, '%d' % i]
+                    chunks.append(delim.join(current))
+                    current = None
+            # This should never happen
+            else:
+                current = [label.replace('E-', ''), '%d' % i]
+                if verbose:
+                    logger.warning('Warning: E without previous chunk! @ %d' % i)
+                chunks.append(delim.join(current))
+                current = None
     # If something is left, flush
     if current is not None:
         chunks.append(delim.join(current))
