@@ -448,7 +448,7 @@ def gappy_iobes_mask(vocab, start, end, pad=None):
                 elif (
                     from_.startswith("E-") or
                     from_.startswith("I-") or
-                    from_.startswith("S-") or
+                    from_.startswith("S-")
                 ):
                     # Can't move from E to I or E
                     # Can't move from I to I or E
@@ -1409,6 +1409,7 @@ def to_gappy_chunks_iobes(sequence, verbose=False, delim="@"):
         chunks.append(delim.join(current))
     return chunks
 
+to_chunks_iobes = to_gappy_chunks_iobes
 
 @exporter
 def span_f1(golds, preds):
