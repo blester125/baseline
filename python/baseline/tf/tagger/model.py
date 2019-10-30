@@ -181,8 +181,13 @@ class TaggerModelBase(TaggerModel):
         gos = tf.constant(np_gos)
         start = tf.tile(gos, [bsz, 1, 1])
         start = tf.nn.log_softmax(start, axis=-1) if norm else start
-        probv = tf.concat([start, self.probs], axis=1)
-        viterbi, _ = tf.contrib.crf.crf_decode(probv, trans, self.lengths + 1)
+        np_ends = np.full((1, 1, lsz), -1e4, dtype=np.float32)
+        np_ends[:, :, Offsets.EOS] = 0
+        ends = tf.constant(np_ends)
+        end = tf.tile(ends, [bsz, 1, 1])
+        end = tf.nn.log_softmax(end, axis=-1) if norm else end
+        probv = tf.concat([start, self.probs, end], axis=1)
+        viterbi, _ = tf.contrib.crf.crf_decode(probv, trans, self.lengths + 2)
         self.best = tf.identity(viterbi[:, 1:], name="best")
 
     def _create_word_level_decode(self):
