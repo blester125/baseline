@@ -2,10 +2,11 @@ import six
 
 import os
 import pickle
+import logging
 from collections import defaultdict
+from typing import Dict, Tuple, Any, Optional
 import numpy as np
 import baseline
-import logging
 from baseline.utils import (
     export,
     unzip_files,
@@ -27,9 +28,10 @@ __all__ = []
 exporter = export(__all__)
 
 
-class Service(object):
+class Service:
 
     def __init__(self, vocabs=None, vectorizers=None, model=None, preproc='client'):
+        super().__init__()
         self.vectorizers = vectorizers
         self.model = model
         self.vocabs = vocabs
@@ -42,12 +44,12 @@ class Service(object):
         return self.model.get_labels()
 
     @classmethod
-    def signature_name(cls):
-        raise Exception("Undefined signature name")
+    def signature_name(cls) -> str:
+        raise NotImplementedError("Undefined signature name")
 
     @classmethod
-    def task_name(cls):
-        raise Exception("Undefined task name")
+    def task_name(cls) -> str:
+        raise NotImplementedError("Undefined task name")
 
     def predict(self, tokens, **kwargs):
         pass
@@ -64,6 +66,7 @@ class Service(object):
         :param tokens: tokens in format List[str] or List[List[str]]
         :return: List[List[str]]
         """
+        tokens = tokens.split() if isinstance(tokens, str) else tokens
         # If the input is List[str] wrap it in list to make a batch of size one.
         return (tokens,) if isinstance(tokens[0], str) else tokens
 
@@ -298,6 +301,7 @@ class TaggerService(Service):
 
         :return: List[List[dict[str] -> str]]
         """
+        tokens = tokens.split() if isinstance(tokens, str) else tokens
         # Input is a list of strings. (assume strings are tokens)
         if isinstance(tokens[0], six.string_types):
             tokens_batch = []
@@ -321,12 +325,12 @@ class TaggerService(Service):
                         tokens_batch += [utt_dict_seq]
                 # Its already in List[List[dict]] form, do nothing
                 elif isinstance(tokens[0][0], dict):
-                    tokens_batch = [tokens]
+                    tokens_batch = tokens
             # If its a dict, we just wrap it up
             elif isinstance(tokens[0], dict):
                 tokens_batch = [tokens]
             else:
-                raise Exception('Unknown input format')
+                raise ValueError('Unknown input format')
 
         if len(tokens_batch) == 0:
             return []
@@ -455,28 +459,32 @@ class EncoderDecoderService(Service):
 
     def __init__(self, vocabs=None, vectorizers=None, model=None, preproc='client'):
         super(EncoderDecoderService, self).__init__(None, None, model, preproc)
-        self.src_vocabs = {}
-        self.tgt_vocab = None
-        for k, vocab in vocabs.items():
-            if k == 'tgt':
-                self.tgt_vocab = vocab
-            else:
-                self.src_vocabs[k] = vocab
-
+        self.src_vocbas, self.tgt_vocab = EncoderDecoderService.extract_tgt(vocabs)
         self.tgt_idx_to_token = revlut(self.tgt_vocab)
-        self.src_vectorizers = {}
-        self.tgt_vectorizer = None
-        for k, vectorizer, in vectorizers.items():
-            if k == 'tgt':
-                self.tgt_vectorizer = vectorizer
-            else:
-                self.src_vectorizers[k] = vectorizer
+        self.src_vectorizers, self.tgt_vectorizer = EncoderDecoderService.extract_tgt(vectorizers)
+
+    @staticmethod
+    def extract_tgt(mapping: Dict[str, Any]) -> Tuple[Dict[str, Any], Optional[Any]]:
+        src = {k: v for k, v in mapping.items() if k != 'tgt'}
+        tgt = mapping.get('tgt')
+        return src, tgt
 
     def src_vocab(self, vocab_type):
         return self.src_vocabs[vocab_type]
 
     def get_tgt_vocab(self):
         return self.tgt_vocab
+
+    def prepare_vectorizers(self, tokens_batch):
+        """Batch the input tokens, and call reset and count method on each vectorizers to set up their mxlen.
+           This method is mainly for reducing repeated code blocks.
+
+        :param tokens_batch: input tokens in format or List[List[str]]
+        """
+        for vectorizer in self.src_vectorizers.values():
+            vectorizer.reset()
+            for tokens in tokens_batch:
+                _ = vectorizer.count(tokens)
 
     @classmethod
     def load(cls, bundle, **kwargs):
@@ -503,10 +511,7 @@ class EncoderDecoderService(Service):
 
     def predict(self, tokens, K=1, **kwargs):
         tokens_batch = self.batch_input(tokens)
-        for vectorizer in self.src_vectorizers.values():
-            vectorizer.reset()
-            for tokens in tokens_batch:
-                _ = vectorizer.count(tokens)
+        self.prepare_vectorizers(tokens_batch)
         examples = self.vectorize(tokens_batch)
 
         kwargs['beam'] = int(kwargs.get('beam', K))
