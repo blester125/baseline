@@ -323,7 +323,7 @@ def iob2_mask(vocab, start, end, pad=None):
     return(mask)
 
 
-def iobes_mask(vocab, start, end, pad=None):
+def real_iobes_mask(vocab, start, end, pad=None):
     small = 0
     mask = np.ones((len(vocab), len(vocab)), dtype=np.float32)
     for from_ in vocab:
@@ -390,71 +390,13 @@ def iobes_mask(vocab, start, end, pad=None):
     return mask
 
 
-def gappy_iobes_mask(vocab, start, end, pad=None):
-    """An IOBES mask that can handle gaps in the sequence.
-
-    This is like the normal iobes mask but anything can move to and O
-    and an O can move to anything.
-    """
-    small = 0
-    mask = np.ones((len(vocab), len(vocab)), dtype=np.float32)
-    for from_ in vocab:
-        for to in vocab:
-            # Can't move to start
-            if to is start:
-                mask[vocab[to], vocab[from_]] = small
-            # Can't move from end
-            if from_ is end:
-                mask[vocab[to], vocab[from_]] = small
-            # Can only move from pad to pad or to end
-            if from_ is pad:
-                if not(to is pad or to is end):
-                    mask[vocab[to], vocab[from_]] = small
-            elif from_ is start:
-                # Can't move from start to I or E
-                if to.startswith("I-") or to.startswith("E-"):
-                    mask[vocab[to], vocab[from_]] = small
-            else:
-                if from_.startswith("B-"):
-                    # Can't move from B to B, S, End, or Pad
-                    if (
-                        to.startswith("B-") or
-                        to.startswith("S-") or
-                        to is end or
-                        to is pad
-                    ):
-                        mask[vocab[to], vocab[from_]] = small
-                    # Can only move to matching I or E
-                    elif to.startswith("I-") or to.startswith("E-"):
-                        from_type = from_.split("-")[1]
-                        to_type = to.split("-")[1]
-                        if from_type != to_type:
-                            mask[vocab[to], vocab[from_]] = small
-                elif from_.startswith("I-"):
-                    # Can't move from I to B, S, End or Pad
-                    if (
-                        to.startswith("B-") or
-                        to.startswith("S-") or
-                        to is end or
-                        to is pad
-                    ):
-                        mask[vocab[to], vocab[from_]] = small
-                    # Can only move to matching I or E
-                    elif to.startswith("I-") or to.startswith("E-"):
-                        from_type = from_.split("-")[1]
-                        to_type = to.split("-")[1]
-                        if from_type != to_type:
-                            mask[vocab[to], vocab[from_]] = small
-                elif (
-                    from_.startswith("E-") or
-                    from_.startswith("I-") or
-                    from_.startswith("S-")
-                ):
-                    # Can't move from E to I or E
-                    # Can't move from I to I or E
-                    # Can't move from S to I or E
-                    if to.startswith("I-") or to.startswith("E-"):
-                        mask[vocab[to], vocab[from_]] = small
+def iobes_mask(vocab, start, end, pad=None):
+    mask = real_iobes_mask(vocab, start, end, pad=pad)
+    outside = vocab["O"]
+    # Because of the gaps any token can transition to outside and outside
+    # can transition to any token
+    mask[:, outside] = 1.
+    mask[outside, :] = 1.
     return mask
 
 
