@@ -1,15 +1,15 @@
-import numpy as np
-from eight_mile.utils import export, optional_params, register, listify
 import math
+import numpy as np
+from eight_mile.utils import exporter, listify
 
 
 __all__ = []
-exporter = export(__all__)
+export = exporter(__all__)
 
 MEAD_LAYERS_LR_SCHEDULERS = {}
 
 
-@exporter
+@export
 class LearningRateScheduler(object):
 
     def __init__(self, **kwargs):
@@ -20,7 +20,7 @@ class LearningRateScheduler(object):
         return x
 
 
-@exporter
+@export
 class WarmupLearningRateScheduler(LearningRateScheduler):
     def __init__(self, warmup_steps=16000, **kwargs):
         super().__init__(**kwargs)
@@ -31,7 +31,7 @@ class WarmupLearningRateScheduler(LearningRateScheduler):
         return self._warmup_steps
 
 
-@exporter
+@export
 class ConstantScheduler(LearningRateScheduler):
 
     def __init__(self, **kwargs):
@@ -41,7 +41,7 @@ class ConstantScheduler(LearningRateScheduler):
         return self.lr
 
 
-@exporter
+@export
 class WarmupLinearScheduler(WarmupLearningRateScheduler):
 
     def __call__(self, global_step):
@@ -49,7 +49,7 @@ class WarmupLinearScheduler(WarmupLearningRateScheduler):
         return self.lr * lr_factor
 
 
-@exporter
+@export
 class CyclicLRScheduler(LearningRateScheduler):
 
     def __init__(self, max_lr=1e-2, decay_steps=1000, **kwargs):
@@ -64,7 +64,7 @@ class CyclicLRScheduler(LearningRateScheduler):
         return new_lr
 
 
-@exporter
+@export
 class PiecewiseDecayScheduler(LearningRateScheduler):
 
     def __init__(self, boundaries, values, **kwargs):
@@ -77,7 +77,7 @@ class PiecewiseDecayScheduler(LearningRateScheduler):
         return self.values[pos]
 
 
-@exporter
+@export
 class ZarembaDecayScheduler(PiecewiseDecayScheduler):
 
     def __init__(self, boundaries=None, decay_rate=None, **kwargs):
@@ -91,7 +91,7 @@ class ZarembaDecayScheduler(PiecewiseDecayScheduler):
         super().__init__(boundaries, values, **kwargs)
 
 
-@exporter
+@export
 class CosineDecayScheduler(LearningRateScheduler):
 
     def __init__(self, decay_steps=1000, alpha=0.0, **kwargs):
@@ -106,7 +106,7 @@ class CosineDecayScheduler(LearningRateScheduler):
         return self.lr * decayed
 
 
-@exporter
+@export
 class InverseTimeDecayScheduler(LearningRateScheduler):
 
     def __init__(self, decay_steps=16000, decay_rate=0.05, staircase=False, **kwargs):
@@ -120,7 +120,7 @@ class InverseTimeDecayScheduler(LearningRateScheduler):
         return self.lr / (1.0 + self.decay_rate * t)
 
 
-@exporter
+@export
 class ExponentialDecayScheduler(LearningRateScheduler):
 
     def __init__(self, decay_steps=16000, decay_rate=0.5, staircase=False, **kwargs):
@@ -133,7 +133,7 @@ class ExponentialDecayScheduler(LearningRateScheduler):
         t = self.wrap_fn(global_step / float(self.decay_steps))
         return self.lr * self.decay_rate ** t
 
-@exporter
+@export
 class CompositeLRScheduler(LearningRateScheduler):
     def __init__(self, warm=None, rest=None, **kwargs):
         super().__init__(**kwargs)
@@ -144,31 +144,3 @@ class CompositeLRScheduler(LearningRateScheduler):
         if global_step < self.warm.warmup_steps:
             return self.warm(global_step)
         return self.rest(global_step - self.warm.warmup_steps)
-
-
-@exporter
-@optional_params
-def register_lr_scheduler(cls, name=None):
-    return register(cls, MEAD_LAYERS_LR_SCHEDULERS, name, 'lr_scheduler')
-
-
-@exporter
-def create_lr_scheduler(**kwargs):
-    """Create a learning rate scheduler.
-
-    :Keyword Arguments:
-      * *lr_scheduler_type* `str` or `list` The name of the learning rate scheduler
-          if list then the first scheduler should be a warmup scheduler.
-    """
-    sched_type = kwargs.get('lr_scheduler_type')
-    if sched_type is None:
-        return None
-    sched_type = listify(sched_type)
-    if len(sched_type) == 2:
-        warm = MEAD_LAYERS_LR_SCHEDULERS.get(sched_type[0])(**kwargs)
-        assert isinstance(warm, WarmupLearningRateScheduler), "First LR Scheduler must be a warmup scheduler."
-        rest = MEAD_LAYERS_LR_SCHEDULERS.get(sched_type[1])(**kwargs)
-        return MEAD_LAYERS_LR_SCHEDULERS.get('composite')(warm=warm, rest=rest, **kwargs)
-    Constructor = MEAD_LAYERS_LR_SCHEDULERS.get(sched_type[0])
-    return Constructor(**kwargs)
-
