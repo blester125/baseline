@@ -15,7 +15,7 @@ import numpy as np
 import addons
 
 
-logger = logging.getLogger('eight_mile')
+logger = logging.getLogger('mead.layers')
 
 __all__ = ['exporter']
 
