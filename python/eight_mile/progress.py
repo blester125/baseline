@@ -1,26 +1,14 @@
 import re
 import sys
 import six
-from eight_mile.utils import export, optional_params, register
+from eight_mile.utils import exporter
+
 
 __all__ = []
-
-exporter = export(__all__)
-MEAD_LAYERS_PROGRESS = {}
+export = exporter(__all__)
 
 
-@exporter
-@optional_params
-def register_progress(cls, name=None):
-    return register(cls, MEAD_LAYERS_PROGRESS, name, 'progress')
-
-
-@exporter
-def create_progress_bar(steps, name='default', **kwargs):
-    return MEAD_LAYERS_PROGRESS[name](steps, **kwargs)
-
-
-@exporter
+@export
 class Progress(object):
     """Progress hook
 
@@ -54,7 +42,7 @@ class Progress(object):
         self.done()
 
 
-@exporter
+@export
 @register_progress('jupyter')
 class ProgressBarJupyter(Progress):
     """Simple Jupyter progress bar
@@ -80,7 +68,7 @@ class ProgressBarJupyter(Progress):
 
 # Modifed from here
 # http://stackoverflow.com/questions/3160699/python-progress-bar#3160819
-@exporter
+@export
 @register_progress('default')
 class ProgressBarTerminal(Progress):
     """Simple terminal-based progress bar
