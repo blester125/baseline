@@ -1,14 +1,14 @@
 import numpy as np
-from eight_mile.utils import export
+from eight_mile.utils import exporter
 from collections import OrderedDict
 import csv
 
 __all__ = []
-exporter = export(__all__)
+export = exporter(__all__)
 
 
-@exporter
-class ConfusionMatrix(object):
+@export
+class ConfusionMatrix():
     """Confusion matrix with metrics
 
     This class accumulates classification output, and tracks it in a confusion matrix.
