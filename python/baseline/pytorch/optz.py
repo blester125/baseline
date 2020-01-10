@@ -11,6 +11,7 @@ from eight_mile.optz import (
     ExponentialDecayScheduler,
     CompositeLRScheduler,
 )
+from baseline.optz import register_lr_scheuduler
 
 
 @register_lr_scheduler(name='default')
