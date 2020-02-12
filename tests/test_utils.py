@@ -3,8 +3,9 @@ import string
 import random
 from itertools import chain
 import pytest
+import numpy as np
 from mock import patch
-from eight_mile.utils import get_env_gpus, idempotent_append, parse_module_as_path
+from eight_mile.utils import get_env_gpus, idempotent_append, parse_module_as_path, gather
 
 
 @pytest.fixture
@@ -149,3 +150,18 @@ def test_parse_module_as_path_absolute():
             real_patch.assert_called_once_with(path)
     assert n == file_base
     assert d == path
+
+
+def test_gather():
+    torch = pytest.importorskip('torch')
+    shape = np.random.randint(10, 100, size=np.random.randint(3, 5))
+    data = np.random.rand(*shape)
+    idx_shape = shape
+    idx_dim = np.random.randint(len(shape) - 1, len(shape))
+    idx_shape[idx_dim] = 1
+    idx = np.random.randint(0, 10, size=idx_shape)
+    pyt_data = torch.from_numpy(data)
+    pyt_idx = torch.from_numpy(idx)
+    pyt = torch.gather(pyt_data, idx_dim, pyt_idx)
+    np_ = gather(data, idx_dim, idx)
+    np.testing.assert_allclose(np_, pyt)

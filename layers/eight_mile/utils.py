@@ -1548,3 +1548,20 @@ def mime_type(file_name: str) -> str:
     if is_text_file(b):
         return "text/plain"
     return "application/w2v"
+
+
+@export
+def gather(tensor, dim, index):
+    """ Gather values along an axis
+
+    https://pytorch.org/docs/stable/torch.html#torch.gather
+    """
+    dim = normalize_indices([dim], len(tensor.shape))[0]
+    idx_shapes = index.shape[:dim] + index.shape[dim + 1:]
+    tensor_shapes = tensor.shape[:dim] + tensor.shape[dim + 1:]
+    if idx_shapes != tensor_shapes:
+        raise ValueError(f"Shapes must match expect at dimension {dim}, got {idx_shapes}, {tensor_shapes}")
+    tensor_swapped = np.swapaxes(tensor, 0, dim)
+    index_swapped = np.swapaxes(index, 0, dim)
+    gathered = np.choose(index_swapped, tensor_swapped)
+    return np.swapaxes(gathered, 0, dim)

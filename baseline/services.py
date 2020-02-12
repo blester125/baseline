@@ -17,6 +17,7 @@ from baseline.utils import (
     load_vocabs,
     lookup_sentence,
     normalize_backend,
+    gather,
 )
 from baseline.model import load_model_for
 
