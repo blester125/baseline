@@ -30,6 +30,20 @@ KNOWN_DATE_FMTS = [
 ]
 
 
+KNOWN_DATE_FMTS = [
+    '%Y%m%d',
+    '%Y-%m-%d',
+    '%Y/%m/%d',
+    '%Y',
+    '%Y%m',
+    '%Y-%m',
+    '%Y/%m',
+    '%Y%m%d_%H%M',
+    '%Y-%m-%d_%H-%M',
+    '%Y/%m/%d_%M/%H'
+]
+
+
 @export
 def configure_logger(logger_config, basedir=None):
     """Use the logger file (logging.json) to configure the log, but overwrite the filename to include the PID
