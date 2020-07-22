@@ -1722,6 +1722,7 @@ class VectorSequenceAttention(nn.Module):
         # Keys = B x T x H
         # a = B x T x 1
         a = self._attention(query_t, keys_bth, keys_mask)
+        self.attention_weight = a
         attended = self._update(a, query_t, values_bth)
 
         return attended

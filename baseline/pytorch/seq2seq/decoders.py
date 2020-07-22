@@ -321,7 +321,11 @@ class RNNDecoderWithAttn(RNNDecoder):
             self.attn_module = LuongGeneralAttention(self.hsz)
 
     def attn(self, output_t, context, src_mask=None):
-        return self.attn_module(output_t, context, context, src_mask)
+        x = self.attn_module(output_t, context, context, src_mask)
+        if not hasattr(self, "attention_weights"):
+            self.attention_weights = []
+        self.attention_weights.append(self.attn_module.attention_weight)
+        return x
 
 
 @register_decoder(name='transformer')
