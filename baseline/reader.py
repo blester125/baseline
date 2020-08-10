@@ -148,7 +148,7 @@ def _vocab_allowed(vectorizers):
 @export
 class ParallelCorpusReader(object):
 
-    def __init__(self, vectorizers, trim=False, truncate=False):
+    def __init__(self, vectorizers, trim=False, truncate=False, **kwargs):
         super().__init__()
 
         self.src_vectorizers = {}

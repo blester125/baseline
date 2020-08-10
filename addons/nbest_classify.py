@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from eight_mile.pytorch.layers import MaxPool1D, unsort_batch
+from eight_mile.pytorch.layers import MaxPool1D, MeanPool1D, unsort_batch
 from baseline.model import register_model
 from baseline.pytorch.torchy import *
 from baseline.pytorch.classify.model import EmbedPoolStackModel, ConvModel, ClassifierModelBase, FineTuneModelClassifier
@@ -16,6 +16,7 @@ class NBestMixin(ClassifierModelBase):
             return MaxPool1D(input_dim)
         elif agg_type == "mean":
             return MeanPool1D(input_dim)
+        # TODO: Add other pooling mechanisms like attention or hard selection of a single hypothesis
         elif agg_type == "":
             pass
         else:

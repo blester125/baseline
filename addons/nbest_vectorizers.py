@@ -8,7 +8,8 @@ from baseline.vectorizers import (
     register_vectorizer,
     AbstractVectorizer,
     Token1DVectorizer,
-    WordpieceVectorizer1D,
+    WordpieceVectorizer1D as Wordpiece1DVectorizer,
+    BPEVectorizer1D as BPE1DVectorizer,
 )
 
 
@@ -123,5 +124,10 @@ class NBestJSONVectorizerWithCLSMixin(NBestJSONVectorizerMixin):
 
 
 @register_vectorizer(name="nbest-json-wordpiece1d")
-class NBestJSONWordpiece1DVectorizer(NBestJSONVectorizerWithCLSMixin, WordpieceVectorizer1D):
+class NBestJSONWordpiece1DVectorizer(NBestJSONVectorizerWithCLSMixin, Wordpiece1DVectorizer):
+    pass
+
+
+@register_vectorizer(name="nbest-json-bpe1d")
+class NBestJSONBPE1DVectorizer(NBestJSONVectorizerWithCLSMixin, BPE1DVectorizer):
     pass
