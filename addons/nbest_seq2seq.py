@@ -36,12 +36,14 @@ class NBestDecoderMixin(nn.Module):
         output_tbh, _ = self.decode_rnn(context_bth, h_i, output_i, dst.transpose(0, 1), src_mask)
 
         nbest_lengths = inputs['nbest_lengths']
-        B = nbest_lengths.size(0)
-        T, _, H = output_tbh.shape
-        output_tbnh = output_tbh.view(T, B, -1, H)
+        perm_idx = inputs['perm_idx']
 
-        output_bnth = output_tbnh.permute(1, 2, 0, 3)
-        output_bnx = output_tbnh.view(B, -1, T * H)
+        output_bth = output_tbh.permute(1, 0, 2).contiguous()
+        output_bth = unsort_batch(output_bth, perm_idx)
+        B = nbest_lengths.size(0)
+        _, T, H = output_bth.shape
+        output_bnth = output_bth.view(B, -1, T, H)
+        output_bnx = output_bnth.view(B, -1, T * H)
         output_bx = self.nbest_agg((output_bnx, nbest_lengths))
         output_bth = output_bx.view(B, T, H)
         output_tbh = output_bth.permute(1, 0, 2).contiguous()

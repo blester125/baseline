@@ -211,6 +211,20 @@ class NBestSeq2SeqExamples(Seq2SeqExamples):
             self.example_list = sorted(self.example_list, key=lambda x: np.max(x[src_sort_key]))
         self.src_sort_key = src_sort_key
 
+    def _trim_batch(self, batch, max_src_len, max_tgt_len):
+        for k in batch.keys():
+            max_len = max_src_len
+            if k == 'tgt':
+                max_len = max_tgt_len
+
+            if max_len == 0:
+                continue
+            if len(batch[k].shape) == 3:
+                batch[k] = batch[k][:, :, 0:max_len]
+            elif len(batch[k].shape) == 4:
+                batch[k] = batch[k][:, :, 0:max_src_len, :]
+        return batch
+
     def batch(self, start, batchsz, trim=False):
 
         """Get a batch of data
