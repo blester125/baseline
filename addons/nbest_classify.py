@@ -74,6 +74,12 @@ class NBestMixin(ClassifierModelBase):
             return example_dict, perm_idx
         return example_dict
 
+    def predict_batch(self, batch_dict: Dict[str, TensorDef], **kwargs) -> TensorDef:
+        numpy_to_tensor = bool(kwargs.get("numpy_to_tensor", True))
+        # The NBset model already undoes the length sort before it aggregates the nbest examples
+        examples = self.make_input(batch_dict, numpy_to_tensor=numpy_to_tensor)
+        with torch.no_grad():
+            return self(examples).exp()
 
 class NBestEmbedPoolStackMixin(NBestMixin):
 
