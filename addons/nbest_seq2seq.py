@@ -128,9 +128,82 @@ class NBestEncoderDecoderMixin(EncoderDecoderModelBase):
 
 @register_model(task="seq2seq", name="nbest-attn")
 class NBestSeq2SeqModel(NBestEncoderDecoderMixin, Seq2SeqModel):
-    pass
+    def predict(self, batch_dict, **kwargs):
+        """Predict based on the batch.
+
+        If `make_input` is True then run make_input on the batch_dict.
+        This is false for being used during dev eval where the inputs
+        are already transformed.
+        """
+        self.eval()
+        make = kwargs.get('make_input', True)
+        if make:
+            numpy_to_tensor = bool(kwargs.get('numpy_to_tensor', True))
+            inputs, perm_idx = self.make_input(batch_dict, perm=True, numpy_to_tensor=numpy_to_tensor)
+        else:
+            inputs = batch_dict
+        encoder_outputs = self.encode(inputs, inputs['src_len'])
+        outs, lengths, scores = self.decoder._greedy_search(encoder_outputs, inputs=inputs, **kwargs)
+        if make:
+            outs = unsort_batch(outs, perm_idx)
+            lengths = unsort_batch(lengths, perm_idx)
+            scores = unsort_batch(scores, perm_idx)
+        return outs.cpu().numpy()
 
 
 @register_decoder(name="nbest-attn")
 class NBestRNNDecoderWtihAttn(NBestDecoderMixin, RNNDecoderWithAttn):
-    pass
+    def _greedy_search(self, encoder_output, **kwargs):
+        """Decode a sentence by taking the hightest scoring token at each timestep.
+
+        In the past we have just used a beam size of 1 instead of a greedy search because
+        they took about the same time to run. I have added this function back because it
+        is easier to debug and can help finding where different problems in the output are.
+
+        :param encoder_output: `EncoderOutput` The output of the encoder, it should be
+            in the batch first format.
+        """
+        bsz = encoder_output.output.shape[0]
+        device = encoder_output.output.device
+        mxlen = int(kwargs.get("mxlen", 100))
+        nbest_lengths = kwargs['inputs']['nbest_lengths']
+        perm_idx = kwargs['inputs']['perm_idx']
+        N = torch.max(nbest_lengths)
+        B = nbest_lengths.size(0)
+        with torch.no_grad():
+            src_mask = encoder_output.src_mask  # [B, T]
+            # h_i = Tuple[[B * N, H], [B * N, H]]
+            # dec_out = [B * N, H]
+            # context = [B * N, T, H]
+            h_i, dec_out, context = self.arc_policy(encoder_output, self.hsz)
+            # The internal `decode_rnn` actually takes time first so to that.
+            last = torch.full((1, B), Offsets.GO, dtype=torch.long, device=device)
+            outputs = [last]
+            last = repeat_batch(last, N, dim=1)
+            for i in range(mxlen - 1):
+                # Take a step with the RNN
+                # dec_out = [1, B, H]
+                # hi = Tuple[[B, H], [B, H]]
+                dec_out, h_i = self.decode_rnn(context, h_i, dec_out, last, src_mask) # [1, B * N, H]
+                dec = unsort_batch(dec_out.squeeze(0), perm_idx)
+                dec = dec.view(B, N, -1)  # [B, N, H]
+                dec = self.nbest_agg((dec, nbest_lengths))  # [B, H]
+                dec = dec.unsqueeze(0)
+                # Project to vocab size
+                probs = self.output(dec)  # [1, B, V]
+                # Get the best scoring token for each timestep in the batch
+                selected = torch.argmax(probs, dim=-1)
+                outputs.append(selected)
+                selected = repeat_batch(selected, N, dim=1)  # [1, B * N]
+                selected = selected.view(-1)[perm_idx].view(1, -1)
+                last = selected
+                # Convert the last step of the decoder output into a format we can consume [B, H]
+                dec_out = dec_out.squeeze(0)
+            # Combine all the [1, B] outputs into a [T, B] matrix
+            outputs = torch.cat(outputs, dim=0)
+            # Convert to [B, T]
+            outputs = outputs.transpose(0, 1).contiguous()
+            # Add a fake beam dimension of size 1
+            outputs = outputs.unsqueeze(1)
+            # This is mostly for testing so just return zero for lengths and scores.
+            return outputs, torch.zeros(bsz), torch.zeros(bsz)
