@@ -145,7 +145,6 @@ class NBestSeq2SeqModel(NBestEncoderDecoderMixin, Seq2SeqModel):
         encoder_outputs = self.encode(inputs, inputs['src_len'])
         outs, lengths, scores = self.decoder._greedy_search(encoder_outputs, inputs=inputs, **kwargs)
         if make:
-            outs = unsort_batch(outs, perm_idx)
             lengths = unsort_batch(lengths, perm_idx)
             scores = unsort_batch(scores, perm_idx)
         return outs.cpu().numpy()
