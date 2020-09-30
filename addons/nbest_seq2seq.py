@@ -144,10 +144,10 @@ class NBestSeq2SeqModel(NBestEncoderDecoderMixin, Seq2SeqModel):
             inputs = batch_dict
         encoder_outputs = self.encode(inputs, inputs['src_len'])
         outs, lengths, scores = self.decoder._greedy_search(encoder_outputs, inputs=inputs, **kwargs)
-        if make:
-            lengths = unsort_batch(lengths, perm_idx)
-            scores = unsort_batch(scores, perm_idx)
-        return outs.cpu().numpy()
+        # if make:
+        #     lengths = unsort_batch(lengths, perm_idx)
+        #     scores = unsort_batch(scores, perm_idx)
+        return outs.cpu().numpy(), scores
 
 
 @register_decoder(name="nbest-attn")
@@ -178,6 +178,7 @@ class NBestRNNDecoderWtihAttn(NBestDecoderMixin, RNNDecoderWithAttn):
             # The internal `decode_rnn` actually takes time first so to that.
             last = torch.full((1, B), Offsets.GO, dtype=torch.long, device=device)
             outputs = [last]
+            scores = []
             last = repeat_batch(last, N, dim=1)
             for i in range(mxlen - 1):
                 # Take a step with the RNN
@@ -191,8 +192,9 @@ class NBestRNNDecoderWtihAttn(NBestDecoderMixin, RNNDecoderWithAttn):
                 # Project to vocab size
                 probs = self.output(dec)  # [1, B, V]
                 # Get the best scoring token for each timestep in the batch
-                selected = torch.argmax(probs, dim=-1)
+                score, selected = torch.max(probs, dim=-1)
                 outputs.append(selected)
+                scores.append(score)
                 selected = repeat_batch(selected, N, dim=1)  # [1, B * N]
                 selected = selected.view(-1)[perm_idx].view(1, -1)
                 last = selected
@@ -200,9 +202,24 @@ class NBestRNNDecoderWtihAttn(NBestDecoderMixin, RNNDecoderWithAttn):
                 dec_out = dec_out.squeeze(0)
             # Combine all the [1, B] outputs into a [T, B] matrix
             outputs = torch.cat(outputs, dim=0)
+            scores = torch.cat(scores, dim=0)
             # Convert to [B, T]
             outputs = outputs.transpose(0, 1).contiguous()
+            scores = scores.transpose(0, 1).contiguous()
+            lengths = []
+            for example in outputs:
+                i = 0
+                for token in example:
+                    if token == Offsets.EOS:
+                        break
+                    i += 1
+                lengths.append(i - 1)
+            lengths = torch.LongTensor(lengths)
+            mask = sequence_mask(lengths, scores.size(1)).to(scores.device)
+            scores = scores.masked_fill(mask == False, 0.0).sum(dim=1).exp()
             # Add a fake beam dimension of size 1
             outputs = outputs.unsqueeze(1)
+            lengths = lengths.unsqueeze(1)
+            scores = scores.unsqueeze(1)
             # This is mostly for testing so just return zero for lengths and scores.
-            return outputs, torch.zeros(bsz), torch.zeros(bsz)
+            return outputs, lengths, scores
